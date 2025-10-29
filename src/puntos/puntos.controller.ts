@@ -3,19 +3,17 @@ import { PuntosService } from './puntos.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import { YoutubeChatService } from './youtube-chat.service';
+import { OpenaiService } from '../openai/openai.service';
 
 @Controller('puntos')
 export class PuntosController {
 
     constructor(
-        private readonly PuntoService: PuntosService,
         private readonly youtubeChatService: YoutubeChatService,
+        private readonly openaiService: OpenaiService,
     ){}
 
-    @Get()
-    hello(): string{
-        return this.PuntoService.Obtener()
-    }
+   
 
     @Get('superchats')
     async getSuperchats(): Promise<any>{
@@ -35,6 +33,11 @@ export class PuntosController {
         }
 
         return { items: [] };
+    }
+
+    @Get('analysis')
+    async getAnalysis(): Promise<any> {
+        return this.openaiService.getAnalysis();
     }
 
 }

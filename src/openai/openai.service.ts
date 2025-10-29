@@ -372,4 +372,29 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
       this.logger.debug('No se pudo escribir openai-last-sent.json', (err as any)?.message ?? err);
     }
   }
+
+  /**
+   * Método público para leer y devolver el contenido actual de superchats-analysis.json
+   * Útil para endpoints que expongan los resultados del análisis de OpenAI.
+   */
+  public getAnalysis(): any {
+    try {
+      if (!fs.existsSync(this.analysisFile)) {
+        return {
+          error: 'Analysis file not found',
+          message: 'No analysis has been generated yet. Wait for the first processing cycle.',
+        };
+      }
+
+      const content = fs.readFileSync(this.analysisFile, 'utf-8');
+      const parsed = JSON.parse(content);
+      return parsed;
+    } catch (err) {
+      this.logger.error('Error al leer superchats-analysis.json', err as any);
+      return {
+        error: 'Failed to read analysis file',
+        message: (err as any)?.message ?? 'Unknown error',
+      };
+    }
+  }
 }
