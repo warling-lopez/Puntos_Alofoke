@@ -1,0 +1,68 @@
+{
+  "updatedAt": "2025-10-29T04:26:23.694Z",
+  "model": "gpt-4o-mini",
+  "response": {
+    "results": [
+      {
+        "id": "TeamJLexis",
+        "name": "J Lexis",
+        "points": 28.89
+      },
+      {
+        "id": "TeamFlores",
+        "name": "Michael Flores",
+        "points": 37.18
+      },
+      {
+        "id": "TeamSaltamonte",
+        "name": "Carlos",
+        "points": 7.96
+      },
+      {
+        "id": "TeamPollito",
+        "name": "Pollito Tropical",
+        "points": 27.98
+      },
+      {
+        "id": "TeamFruta",
+        "name": "La Fruta",
+        "points": 22.74
+      },
+      {
+        "id": "TeamInsuperable",
+        "name": "La Insuperable",
+        "points": 9.99
+      },
+      {
+        "id": "TeamDiosa",
+        "name": "Diosa Canales",
+        "points": 8.68
+      },
+      {
+        "id": "TeamPichardo",
+        "name": "Pichardo",
+        "points": 1.99
+      },
+      {
+        "id": "TeamShadow",
+        "name": "Shadow Blow",
+        "points": 5.99
+      },
+      {
+        "id": "TeamJD",
+        "name": "JD",
+        "points": 1.99
+      },
+      {
+        "id": "TeamGrace",
+        "name": "Grace Bon",
+        "points": 7.96
+      },
+      {
+        "id": "TeamPerversa",
+        "name": "La Perversa",
+        "points": 7.95
+      }
+    ]
+  }
+}
