@@ -6,7 +6,8 @@ import OpenAI from 'openai';
 @Injectable()
 export class OpenaiService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OpenaiService.name);
-  private readonly intervalMs = 1.5 * 60 * 1000; // 2 minutos
+  // Ejecutar cada 5 minutos para leer el archivo que escribe YoutubeChatService
+  private readonly intervalMs = 2 * 60 * 1000; // 5 minutos
   private intervalHandle: NodeJS.Timeout | null = null;
   private readonly filePath = path.join(process.cwd(), 'superchats.json');
   private client: OpenAI | null = null;
@@ -18,16 +19,22 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Inicializando OpenAI service...');
     this.loadLastSentFromDisk();
 
-    await this.runOnce().catch((err) => this.logger.error('runOnce error', err));
+    // Esperar 15 segundos antes del primer runOnce para dar tiempo a que
+    // YoutubeChatService haga su primer flush (que ocurre a los 2 minutos de inicio)
+    setTimeout(() => {
+      this.runOnce().catch((err) => this.logger.error('runOnce error', err));
+    }, 15000);
 
     this.intervalHandle = setInterval(() => {
       this.runOnce().catch((err) => this.logger.error('runOnce error', err));
     }, this.intervalMs);
 
-    this.logger.log(`OpenAI polling configurado cada ${this.intervalMs} ms`);
+    this.logger.log(`OpenAI polling configurado cada ${this.intervalMs} ms (inicio diferido 15s)`);
   }
 
   private async runOnce(): Promise<void> {
+    const lockFile = path.join(process.cwd(), 'superchats.lock');
+    
     try {
       if (!process.env.OPENAI_API_KEY) {
         this.logger.warn('OPENAI_API_KEY no configurada — omitiendo llamada a OpenAI');
@@ -47,39 +54,43 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
+      // Crear lock file para indicar que estamos leyendo/procesando
+      fs.writeFileSync(lockFile, JSON.stringify({ pid: process.pid, timestamp: Date.now() }), 'utf-8');
+      this.logger.log('🔒 Lock adquirido para leer superchats.json');
+
       const fileText = fs.readFileSync(this.filePath, 'utf-8');
 
       const systemPrompt = `{
   "teams": [
-    {"id":"TeamSaltamonte","name":"Carlos","description":"Carlos, El Saltamontes","keywords":["saltamonte","saltamontes","carlos"]},
-    {"id":"TeamJLexis","name":"J Lexis","description":"J Lexis, El Nene de Puerto Rico","keywords":["jlexis","jlexi","jlaxis","j alexis","nene","los nenes"]},
-    {"id":"TeamFlores","name":"Michael Flores","description":"Michael Flores","keywords":["flores","michael","maicol","maikel","los boris"]},
-    {"id":"TeamFruta","name":"La Fruta","description":"La Fruta","keywords":["fruta","la fruta"]},
-    {"id":"TeamPollito","name":"Pollito Tropical","description":"Pollito Tropical","keywords":["pollito","pollo","pollito tropical"]},
-    {"id":"TeamGrace","name":"Grace Bon","description":"Grace Bon","keywords":["grace","gracie","panama"]},
-    {"id":"TeamPerversa","name":"La Perversa","description":"La Perversa (Gigi)","keywords":["perversa","perve","gigi"]},
-    {"id":"TeamInsuperable","name":"La Insuperable","description":"La Insuperable","keywords":["insuperable","la insu"]},
-    {"id":"TeamDiosa","name":"Diosa Canales","description":"Diosa Canales","keywords":["diosa","diosa canales","danii","dani"]},
-    {"id":"TeamPichardo","name":"Pichardo","description":"Pichardo","keywords":["pichardo"]},
+    {"id":"TeamSaltamonte","name":"Carlos","description":"Carlos, El Saltamontes","keywords":["saltamonte","saltamontes","carlos","montesquieu","montesquie","montecruz","montecris","carlos el saltamontes","sensei","maestro","loco","onvee"]},
+    {"id":"TeamJLexis","name":"J Lexis","description":"J Lexis, El Nene de Puerto Rico","keywords":["jlexis","jlexi","jlaxis","j alexis","nene","los nenes","el nene","jalexis","jalexi","jalaxis","jhalexis","nenes de pr","nenes pr","elnene"]},
+    {"id":"TeamFlores","name":"Michael Flores","description":"Michael Flores","keywords":["flores","michael","maicol","maikel","los boris","bori","boris","michael flores","maikel flores","helicopter","bestia","maikol"]},
+    {"id":"TeamFruta","name":"La Fruta","description":"La Fruta","keywords":["fruta","la fruta","frutas","fruits","frutaa","piraña","piranha","no te tire","pariguayo"]},
+    {"id":"TeamPollito","name":"Pollito Tropical","description":"Pollito Tropical","keywords":["pollito","pollo","pollito tropical","polli","pollio","patria y vida","cuba libre"]},
+    {"id":"TeamGrace","name":"Grace Bon","description":"Grace Bon","keywords":["grace","gracie","panama","gracie bon","grace bon","grecie","greicy","greisi","boom","bum"]},
+    {"id":"TeamPerversa","name":"La Perversa","description":"La Perversa (Gigi)","keywords":["perversa","perve","gigi","la perversa","perver","perverza","perve perve"]},
+    {"id":"TeamInsuperable","name":"La Insuperable","description":"La Insuperable","keywords":["insuperable","la insu","insu","luna","la luna","team luna"]},
+    {"id":"TeamDiosa","name":"Diosa Canales","description":"Diosa Canales","keywords":["diosa","diosa canales","danii","dani","daniii","dany","venezuela","vzla"]},
+    {"id":"TeamPichardo","name":"Pichardo","description":"Pichardo","keywords":["pichardo","pichardo pichardo"]},
     {"id":"TeamShadow","name":"Shadow Blow","description":"Shadow Blow","keywords":["shadow","shadow blow"]},
-    {"id":"TeamJD","name":"JD","description":"JD (Con Su Flow)","keywords":["jd","jd con su flow"]},
-    {"id":"TeamDianabel","name":"Dianabel Gómez","description":"Dianabel Gómez","keywords":["dianabel","anabel"]},
-    {"id":"TeamPepita","name":"Cara de Pepita","description":"Cara de Pepita","keywords":["pepita","care pepita","cara de pepita"]},
-    {"id":"TeamAlo","name":"Capitán Alo","description":"Capitán Alo","keywords":["alo","capitán alo","captain alo"]},
-    {"id":"TeamNola","name":"Mami Nola","description":"Mami Nola","keywords":["nola","mami nola"]},
-    {"id":"TeamPapotico","name":"Papotico","description":"Papotico","keywords":["papotico"]}
+    {"id":"TeamJD","name":"JD","description":"JD (Con Su Flow)","keywords":["jd","jd con su flow","con su flow","flow","psicologo","psicólogo"]},
+    {"id":"TeamDianabel","name":"Dianabel Gómez","description":"Dianabel Gómez","keywords":["dianabel","anabel","dianabel gomez","diana","dianabel gómez","barranco","downsbel"]},
+    {"id":"TeamPepita","name":"Cara de Pepita","description":"Cara de Pepita","keywords":["pepita","care pepita","cara de pepita","carepepita","caradepepita","cara pepita","soledad"]},
+    {"id":"TeamAlo","name":"Capitán Alo","description":"Capitán Alo","keywords":["alo","capitán alo","captain alo","capitan alo","alo alo"]},
+    {"id":"TeamNola","name":"Mami Nola","description":"Mami Nola","keywords":["nola","mami nola","maminola","mami nolas"]},
+    {"id":"TeamPapotico","name":"Papotico","description":"Papotico","keywords":["papotico","papoticoico","papo tico","estervido"]}
   ],
   "rules": [
     "Identifica para cada mensaje qué equipo(s) se mencionan usando coincidencias por keywords (case-insensitive).",
-    "Extrae el monto donado (símbolos: $, COP, DOP, ARS, PEN, EUR, MXN, CHF, etc.).",
-    "Convierte montos a puntos: 1 USD = 1 punto. Factores por defecto: DOP->0.017, COP->0.00025, MXN->0.056, EUR->1.0, ARS->0.006. Si no se identifica moneda, asumir USD.",
-    "Si aparecen N equipos en un mensaje, divide los puntos equitativamente entre ellos (decimales permitidos).",
-    "Acumula puntos por equipo (no repitas equipos en salida).",
+    "Extrae el monto donado y su moneda (símbolos: $, COP, DOP, ARS, PEN, EUR, MXN, CHF, USD, etc.).",
+    "NO conviertas el monto a puntos. Devuelve el monto original y el tipo de moneda identificado.",
+    "Si no se identifica moneda claramente, asumir USD.",
+    "Si aparecen N equipos en un mensaje, divide el monto equitativamente entre ellos (decimales permitidos).",
+    "NO acumules ni sumes montos. Devuelve cada asignación por mensaje individual.",
     "Normaliza equipos usando el campo 'id' y devuelve también 'name'.",
     "Responde SOLO con un JSON válido y NADA más (sin texto explicativo ni fences).",
-    "Redondea 'points' a 2 decimales en la salida."
-  ]
-  ,
+    "Redondea 'amount' a 2 decimales en la salida."
+  ],
   "output_schema": {
     "description": "Estructura exacta que debe devolver la respuesta del modelo",
     "type": "object",
@@ -91,11 +102,13 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
         "items": {
           "type": "object",
           "properties": {
+            "messageId": { "type": "string", "description": "ID o referencia del mensaje original" },
             "id": { "type": "string" },
             "name": { "type": "string" },
-            "points": { "type": "number" }
+            "amount": { "type": "number" },
+            "currency": { "type": "string" }
           },
-          "required": ["id", "name", "points"]
+          "required": ["id", "name", "amount", "currency"]
         }
       }
     },
@@ -103,8 +116,9 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
   },
   "example_output": {
     "results": [
-      {"id":"TeamFruta","name":"La Fruta","points":47.24},
-      {"id":"TeamSaltamonte","name":"Carlos","points":10.5}
+      {"messageId":"msg_001","id":"TeamFruta","name":"La Fruta","amount":50.00,"currency":"USD"},
+      {"messageId":"msg_002","id":"TeamSaltamonte","name":"Carlos","amount":500.00,"currency":"DOP"},
+      {"messageId":"msg_003","id":"TeamFruta","name":"La Fruta","amount":25000.00,"currency":"COP"}
     ]
   }
 }`;
@@ -123,7 +137,6 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        max_tokens: 1200,
       });
 
       const content = res.choices?.[0]?.message?.content;
@@ -169,8 +182,28 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
       this.lastSentAt = mtime2;
       this.saveLastSentToDisk();
       this.logger.log(`Último envío: ${new Date(this.lastSentAt).toISOString()}`);
+      
+      // Liberar lock
+      try {
+        if (fs.existsSync(lockFile)) {
+          fs.unlinkSync(lockFile);
+          this.logger.log('🔓 Lock liberado');
+        }
+      } catch (unlockErr) {
+        this.logger.warn('No se pudo eliminar lock file', unlockErr);
+      }
     } catch (err) {
       this.logger.error('Error en runOnce de OpenaiService', err as any);
+      
+      // Asegurar que liberamos el lock incluso si hay error
+      try {
+        if (fs.existsSync(lockFile)) {
+          fs.unlinkSync(lockFile);
+          this.logger.log('🔓 Lock liberado (después de error)');
+        }
+      } catch (unlockErr) {
+        // ignorar
+      }
     }
   }
 
@@ -190,20 +223,21 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Normaliza la respuesta parseada del modelo a un arreglo de objetos {id,name,points}.
-   * Maneja varias formas comunes que el modelo puede devolver (array, objeto con key-values,
-   * propiedades 'teams' o 'response'). Devuelve puntos redondeados a 2 decimales y suma
-   * duplicados por 'id'.
+   * Normaliza la respuesta parseada del modelo a un arreglo de objetos
+   * { messageId?, id, name, amount, currency }.
+   * Maneja varias formas comunes que el modelo puede devolver (array,
+   * objeto con key-values, propiedades 'results'/'response'/'teams').
+   * NO acumula montos — devuelve una entrada por asignación (por mensaje).
    */
-  private normalizeParsedResult(parsed: any): Array<{ id: string; name: string; points: number }> {
+  private normalizeParsedResult(parsed: any): Array<{ messageId?: string; id: string; name: string; amount: number; currency: string }> {
     if (!parsed) return [];
 
-  // Detect common containers (prefer explicit 'results' returned by the model)
-  let items: any = parsed;
-  if (Array.isArray(parsed)) items = parsed;
-  else if (parsed.results && Array.isArray(parsed.results)) items = parsed.results;
-  else if (parsed.response && Array.isArray(parsed.response)) items = parsed.response;
-  else if (parsed.teams && Array.isArray(parsed.teams)) items = parsed.teams;
+    // Detect common containers (prefer explicit 'results' returned by the model)
+    let items: any = parsed;
+    if (Array.isArray(parsed)) items = parsed;
+    else if (parsed.results && Array.isArray(parsed.results)) items = parsed.results;
+    else if (parsed.response && Array.isArray(parsed.response)) items = parsed.response;
+    else if (parsed.teams && Array.isArray(parsed.teams)) items = parsed.teams;
 
     // If it's an object (not array), convert to array of entries
     if (!Array.isArray(items) && typeof items === 'object') {
@@ -211,10 +245,16 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
       for (const k of Object.keys(items)) {
         const v = items[k];
         if (v && typeof v === 'object') {
-          arr.push({ id: v.id ?? k, name: v.name ?? v.team ?? k, points: v.points ?? v.score ?? v.value ?? 0 });
+          arr.push({
+            messageId: v.messageId ?? v.msgId ?? k,
+            id: v.id ?? k,
+            name: v.name ?? v.team ?? k,
+            amount: v.amount ?? v.value ?? v.points ?? 0,
+            currency: v.currency ?? v.cur ?? 'USD',
+          });
         } else {
           // primitive value (number)
-          arr.push({ id: k, name: k, points: v });
+          arr.push({ messageId: k, id: k, name: k, amount: v, currency: 'USD' });
         }
       }
       items = arr;
@@ -222,40 +262,35 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
 
     if (!Array.isArray(items)) return [];
 
-    const out: Array<{ id: string; name: string; points: number }> = [];
+    const out: Array<{ messageId?: string; id: string; name: string; amount: number; currency: string }> = [];
     for (const it of items) {
       if (!it) continue;
-      const id = it.id ?? it.team ?? it[0] ?? null;
+      const messageId = it.messageId ?? it.msgId ?? null;
+      const id = it.id ?? it.team ?? null;
       const name = it.name ?? it.teamName ?? id ?? 'unknown';
-      let points: any = it.points ?? it.score ?? it.value ?? it.puntos ?? 0;
+      let amount: any = it.amount ?? it.value ?? it.points ?? it.puntos ?? 0;
+      let currency: any = it.currency ?? it.cur ?? 'USD';
 
-      if (typeof points === 'string') {
+      if (typeof amount === 'string') {
         // try to extract first numeric occurrence
-        const m = points.match(/-?\d+[\.,]?\d*/);
-        if (m) {
-          points = m[0].replace(',', '.');
-        }
+        const m = amount.match(/-?\d+[\.,]?\d*/);
+        if (m) amount = m[0].replace(',', '.');
       }
 
-      points = Number(points);
-      if (isNaN(points)) points = 0;
+      amount = Number(amount);
+      if (isNaN(amount)) amount = 0;
 
       if (!id) continue; // skip entries without id
 
       // round to 2 decimals
-      points = Math.round(points * 100) / 100;
+      amount = Math.round(amount * 100) / 100;
+      currency = String(currency).toUpperCase();
 
-      out.push({ id: String(id), name: String(name), points });
+      out.push({ messageId: messageId ?? undefined, id: String(id), name: String(name), amount, currency });
     }
 
-    // Accumulate duplicates by id
-    const map: Record<string, { id: string; name: string; points: number }> = {};
-    for (const o of out) {
-      if (!map[o.id]) map[o.id] = { ...o };
-      else map[o.id].points = Math.round((map[o.id].points + o.points) * 100) / 100;
-    }
-
-    return Object.values(map);
+    // NO acumulamos montos aquí; devolvemos cada asignación por mensaje
+    return out;
   }
 
   /**

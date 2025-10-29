@@ -1,16 +1,97 @@
 {
-  "updatedAt": "2025-10-29T13:39:23.970Z",
+  "updatedAt": "2025-10-29T16:02:26.934Z",
   "model": "gpt-4o-mini",
   "results": [
     {
-      "id": "TeamFlores",
-      "name": "Michael Flores",
-      "points": 0.05
+      "messageId": "msg_001",
+      "id": "TeamFruta",
+      "name": "La Fruta",
+      "amount": 4.99,
+      "currency": "USD"
     },
     {
-      "id": "TeamShadow",
-      "name": "Shadow Blow",
-      "points": 1.99
+      "messageId": "msg_002",
+      "id": "TeamFlores",
+      "name": "Michael Flores",
+      "amount": 9.99,
+      "currency": "USD"
+    },
+    {
+      "messageId": "msg_003",
+      "id": "TeamFruta",
+      "name": "La Fruta",
+      "amount": 9.99,
+      "currency": "USD"
+    },
+    {
+      "messageId": "msg_004",
+      "id": "TeamFruta",
+      "name": "La Fruta",
+      "amount": 1000,
+      "currency": "CLP"
+    },
+    {
+      "messageId": "msg_005",
+      "id": "TeamFruta",
+      "name": "La Fruta",
+      "amount": 4.99,
+      "currency": "USD"
+    },
+    {
+      "messageId": "msg_006",
+      "id": "TeamJD",
+      "name": "JD",
+      "amount": 9.99,
+      "currency": "USD"
+    },
+    {
+      "messageId": "msg_007",
+      "id": "TeamGrace",
+      "name": "Grace Bon",
+      "amount": 1.99,
+      "currency": "USD"
+    },
+    {
+      "messageId": "msg_008",
+      "id": "TeamSaltamonte",
+      "name": "Carlos",
+      "amount": 2,
+      "currency": "USD"
+    },
+    {
+      "messageId": "msg_009",
+      "id": "TeamGrace",
+      "name": "Grace Bon",
+      "amount": 5,
+      "currency": "USD"
+    },
+    {
+      "messageId": "msg_010",
+      "id": "TeamPollito",
+      "name": "Pollito Tropical",
+      "amount": 19.99,
+      "currency": "USD"
+    },
+    {
+      "messageId": "msg_011",
+      "id": "TeamFruta",
+      "name": "La Fruta",
+      "amount": 1.99,
+      "currency": "USD"
+    },
+    {
+      "messageId": "msg_012",
+      "id": "TeamJLexis",
+      "name": "J Lexis",
+      "amount": 2,
+      "currency": "USD"
+    },
+    {
+      "messageId": "msg_013",
+      "id": "TeamGrace",
+      "name": "Grace Bon",
+      "amount": 5,
+      "currency": "EUR"
     }
   ]
 }

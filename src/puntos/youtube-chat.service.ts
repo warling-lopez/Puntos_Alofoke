@@ -9,7 +9,8 @@ export class YoutubeChatService implements OnModuleInit, OnModuleDestroy {
   private liveChat: any;
   private buffer: Array<any> = [];
   private intervalHandle: NodeJS.Timeout | null = null;
-  private readonly windowMs = 2 * 60 * 1000; // 2 minutes
+  // Agrupar mensajes durante 5 minutos antes de flush
+  private readonly windowMs = 2 * 60 * 1000; // 5 minutes
   private readonly outputFile = path.join(process.cwd(), 'superchats.json');
   private readonly videoId = process.env.YT_VIDEO_ID || 'lFnZPGwGttc';
 
@@ -72,6 +73,24 @@ export class YoutubeChatService implements OnModuleInit, OnModuleDestroy {
 
   private flush() {
     try {
+      const lockFile = path.join(process.cwd(), 'superchats.lock');
+      
+      // Esperar hasta 5 segundos si hay un lock (OpenAI leyendo)
+      let attempts = 0;
+      const maxAttempts = 50; // 50 * 100ms = 5 segundos
+      while (fs.existsSync(lockFile) && attempts < maxAttempts) {
+        attempts++;
+        // Espera síncrona de 100ms
+        const start = Date.now();
+        while (Date.now() - start < 100) {
+          // busy wait
+        }
+      }
+
+      if (fs.existsSync(lockFile)) {
+        this.logger.warn('Lock file aún existe después de 5s — sobrescribiendo de todos modos');
+      }
+
       const payload = {
         updatedAt: new Date().toISOString(),
         items: this.buffer,
