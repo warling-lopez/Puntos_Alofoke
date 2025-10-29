@@ -79,6 +79,34 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
     "Responde SOLO con un JSON válido y NADA más (sin texto explicativo ni fences).",
     "Redondea 'points' a 2 decimales en la salida."
   ]
+  ,
+  "output_schema": {
+    "description": "Estructura exacta que debe devolver la respuesta del modelo",
+    "type": "object",
+    "properties": {
+      "updatedAt": { "type": "string", "format": "date-time" },
+      "model": { "type": "string" },
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "points": { "type": "number" }
+          },
+          "required": ["id", "name", "points"]
+        }
+      }
+    },
+    "required": ["results"]
+  },
+  "example_output": {
+    "results": [
+      {"id":"TeamFruta","name":"La Fruta","points":47.24},
+      {"id":"TeamSaltamonte","name":"Carlos","points":10.5}
+    ]
+  }
 }`;
 
       const userPrompt = fileText;
@@ -123,13 +151,17 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
       }
 
       if (parsedResult) {
+        // Normalizar a formato solicitado: [{ id, name, points }, ...]
+        const normalized = this.normalizeParsedResult(parsedResult);
         const payload = {
           updatedAt: new Date().toISOString(),
           model: 'gpt-4o-mini',
-          response: parsedResult,
+          results: normalized,
         };
         fs.writeFileSync(this.analysisFile, JSON.stringify(payload, null, 2), 'utf-8');
         this.logger.log(`✅ Respuesta guardada en ${this.analysisFile}`);
+        this.logger.log('Formato guardado (primeros items):');
+        this.logger.log(JSON.stringify(normalized.slice(0, 5), null, 2));
       }
 
       // Actualizar marca de tiempo
@@ -155,6 +187,75 @@ export class OpenaiService implements OnModuleInit, OnModuleDestroy {
       .replace(/\uFFFD/g, '')
       .replace(/^json\s*/i, '')
       .trim();
+  }
+
+  /**
+   * Normaliza la respuesta parseada del modelo a un arreglo de objetos {id,name,points}.
+   * Maneja varias formas comunes que el modelo puede devolver (array, objeto con key-values,
+   * propiedades 'teams' o 'response'). Devuelve puntos redondeados a 2 decimales y suma
+   * duplicados por 'id'.
+   */
+  private normalizeParsedResult(parsed: any): Array<{ id: string; name: string; points: number }> {
+    if (!parsed) return [];
+
+  // Detect common containers (prefer explicit 'results' returned by the model)
+  let items: any = parsed;
+  if (Array.isArray(parsed)) items = parsed;
+  else if (parsed.results && Array.isArray(parsed.results)) items = parsed.results;
+  else if (parsed.response && Array.isArray(parsed.response)) items = parsed.response;
+  else if (parsed.teams && Array.isArray(parsed.teams)) items = parsed.teams;
+
+    // If it's an object (not array), convert to array of entries
+    if (!Array.isArray(items) && typeof items === 'object') {
+      const arr: any[] = [];
+      for (const k of Object.keys(items)) {
+        const v = items[k];
+        if (v && typeof v === 'object') {
+          arr.push({ id: v.id ?? k, name: v.name ?? v.team ?? k, points: v.points ?? v.score ?? v.value ?? 0 });
+        } else {
+          // primitive value (number)
+          arr.push({ id: k, name: k, points: v });
+        }
+      }
+      items = arr;
+    }
+
+    if (!Array.isArray(items)) return [];
+
+    const out: Array<{ id: string; name: string; points: number }> = [];
+    for (const it of items) {
+      if (!it) continue;
+      const id = it.id ?? it.team ?? it[0] ?? null;
+      const name = it.name ?? it.teamName ?? id ?? 'unknown';
+      let points: any = it.points ?? it.score ?? it.value ?? it.puntos ?? 0;
+
+      if (typeof points === 'string') {
+        // try to extract first numeric occurrence
+        const m = points.match(/-?\d+[\.,]?\d*/);
+        if (m) {
+          points = m[0].replace(',', '.');
+        }
+      }
+
+      points = Number(points);
+      if (isNaN(points)) points = 0;
+
+      if (!id) continue; // skip entries without id
+
+      // round to 2 decimals
+      points = Math.round(points * 100) / 100;
+
+      out.push({ id: String(id), name: String(name), points });
+    }
+
+    // Accumulate duplicates by id
+    const map: Record<string, { id: string; name: string; points: number }> = {};
+    for (const o of out) {
+      if (!map[o.id]) map[o.id] = { ...o };
+      else map[o.id].points = Math.round((map[o.id].points + o.points) * 100) / 100;
+    }
+
+    return Object.values(map);
   }
 
   /**
